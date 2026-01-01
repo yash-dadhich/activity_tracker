@@ -1,0 +1,83 @@
+name: Build Windows Portable
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allows manual trigger
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.10.0'
+        channel: 'stable'
+    
+    - name: Flutter doctor
+      run: flutter doctor -v
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Build Windows Release
+      run: flutter build windows --release
+    
+    - name: Create portable package
+      run: |
+        mkdir ActivityTracker_Windows_Portable
+        xcopy /E /I /Y "build\windows\x64\runner\Release\*" "ActivityTracker_Windows_Portable\"
+    
+    - name: Create README for portable version
+      run: |
+        echo Activity Tracker - Windows Portable Edition > ActivityTracker_Windows_Portable\README.txt
+        echo ========================================== >> ActivityTracker_Windows_Portable\README.txt
+        echo. >> ActivityTracker_Windows_Portable\README.txt
+        echo INSTALLATION: >> ActivityTracker_Windows_Portable\README.txt
+        echo 1. Extract this ZIP file to any folder >> ActivityTracker_Windows_Portable\README.txt
+        echo 2. Run poc_activity_tracker.exe >> ActivityTracker_Windows_Portable\README.txt
+        echo 3. Grant any permissions if prompted by Windows >> ActivityTracker_Windows_Portable\README.txt
+        echo. >> ActivityTracker_Windows_Portable\README.txt
+        echo REQUIREMENTS: >> ActivityTracker_Windows_Portable\README.txt
+        echo - Windows 10 or later (64-bit) >> ActivityTracker_Windows_Portable\README.txt
+        echo - No installation required >> ActivityTracker_Windows_Portable\README.txt
+        echo - No admin rights required (for basic usage) >> ActivityTracker_Windows_Portable\README.txt
+        echo. >> ActivityTracker_Windows_Portable\README.txt
+        echo FEATURES: >> ActivityTracker_Windows_Portable\README.txt
+        echo - Screenshot capture >> ActivityTracker_Windows_Portable\README.txt
+        echo - Active window tracking >> ActivityTracker_Windows_Portable\README.txt
+        echo - Keyboard and mouse activity monitoring >> ActivityTracker_Windows_Portable\README.txt
+        echo - Idle detection >> ActivityTracker_Windows_Portable\README.txt
+        echo - Configurable settings >> ActivityTracker_Windows_Portable\README.txt
+        echo. >> ActivityTracker_Windows_Portable\README.txt
+        echo Version: 1.0.0 >> ActivityTracker_Windows_Portable\README.txt
+        echo Build Date: %date% >> ActivityTracker_Windows_Portable\README.txt
+    
+    - name: Create ZIP file
+      run: Compress-Archive -Path "ActivityTracker_Windows_Portable\*" -DestinationPath "ActivityTracker_Windows_Portable.zip" -Force
+    
+    - name: Upload portable ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: ActivityTracker-Windows-Portable
+        path: ActivityTracker_Windows_Portable.zip
+        retention-days: 90
+    
+    - name: Upload build folder (for debugging)
+      uses: actions/upload-artifact@v4
+      with:
+        name: ActivityTracker-Windows-Build-Folder
+        path: ActivityTracker_Windows_Portable/
+        retention-days: 30
+    
+    - name: Get file size
+      run: |
+        $size = (Get-Item "ActivityTracker_Windows_Portable.zip").Length / 1MB
+        Write-Host "ZIP file size: $([math]::Round($size, 2)) MB"
