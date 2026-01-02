@@ -35,30 +35,9 @@ jobs:
         mkdir ActivityTracker_Windows_Portable
         xcopy /E /I /Y "build\windows\x64\runner\Release\*" "ActivityTracker_Windows_Portable\"
     
-    - name: Create README for portable version
+    - name: Copy README to portable version
       run: |
-        echo Activity Tracker - Windows Portable Edition > ActivityTracker_Windows_Portable\README.txt
-        echo ========================================== >> ActivityTracker_Windows_Portable\README.txt
-        echo. >> ActivityTracker_Windows_Portable\README.txt
-        echo INSTALLATION: >> ActivityTracker_Windows_Portable\README.txt
-        echo 1. Extract this ZIP file to any folder >> ActivityTracker_Windows_Portable\README.txt
-        echo 2. Run poc_activity_tracker.exe >> ActivityTracker_Windows_Portable\README.txt
-        echo 3. Grant any permissions if prompted by Windows >> ActivityTracker_Windows_Portable\README.txt
-        echo. >> ActivityTracker_Windows_Portable\README.txt
-        echo REQUIREMENTS: >> ActivityTracker_Windows_Portable\README.txt
-        echo - Windows 10 or later (64-bit) >> ActivityTracker_Windows_Portable\README.txt
-        echo - No installation required >> ActivityTracker_Windows_Portable\README.txt
-        echo - No admin rights required (for basic usage) >> ActivityTracker_Windows_Portable\README.txt
-        echo. >> ActivityTracker_Windows_Portable\README.txt
-        echo FEATURES: >> ActivityTracker_Windows_Portable\README.txt
-        echo - Screenshot capture >> ActivityTracker_Windows_Portable\README.txt
-        echo - Active window tracking >> ActivityTracker_Windows_Portable\README.txt
-        echo - Keyboard and mouse activity monitoring >> ActivityTracker_Windows_Portable\README.txt
-        echo - Idle detection >> ActivityTracker_Windows_Portable\README.txt
-        echo - Configurable settings >> ActivityTracker_Windows_Portable\README.txt
-        echo. >> ActivityTracker_Windows_Portable\README.txt
-        echo Version: 1.0.0 >> ActivityTracker_Windows_Portable\README.txt
-        echo Build Date: %date% >> ActivityTracker_Windows_Portable\README.txt
+        copy PORTABLE_README.txt ActivityTracker_Windows_Portable\README.txt
     
     - name: Create ZIP file
       run: Compress-Archive -Path "ActivityTracker_Windows_Portable\*" -DestinationPath "ActivityTracker_Windows_Portable.zip" -Force
