@@ -8,12 +8,16 @@
 #include <string>
 #include <memory>
 
-class MonitoringPlugin {
+class MonitoringPlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
 
   MonitoringPlugin();
   virtual ~MonitoringPlugin();
+
+  // Disallow copy and assign.
+  MonitoringPlugin(const MonitoringPlugin&) = delete;
+  MonitoringPlugin& operator=(const MonitoringPlugin&) = delete;
 
  private:
   void HandleMethodCall(

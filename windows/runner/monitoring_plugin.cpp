@@ -110,8 +110,13 @@ std::string MonitoringPlugin::SaveBitmapToFile(HBITMAP hBitmap, int width, int h
   // Generate filename with timestamp
   auto now = std::chrono::system_clock::now();
   auto time = std::chrono::system_clock::to_time_t(now);
+  
+  // Use localtime_s for thread safety
+  struct tm timeinfo;
+  localtime_s(&timeinfo, &time);
+  
   std::stringstream ss;
-  ss << "screenshot_" << std::put_time(std::localtime(&time), "%Y%m%d_%H%M%S") << ".png";
+  ss << "screenshot_" << std::put_time(&timeinfo, "%Y%m%d_%H%M%S") << ".png";
   
   std::string filename = ss.str();
   std::wstring wfilename(filename.begin(), filename.end());

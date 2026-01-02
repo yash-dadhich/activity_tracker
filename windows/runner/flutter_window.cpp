@@ -29,7 +29,7 @@ bool FlutterWindow::OnCreate() {
   
   // Register custom monitoring plugin
   MonitoringPlugin::RegisterWithRegistrar(
-      flutter_controller_->engine()->GetRegistrar("MonitoringPlugin"));
+      flutter_controller_->engine()->GetRegistrarForPlugin("MonitoringPlugin"));
   
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
