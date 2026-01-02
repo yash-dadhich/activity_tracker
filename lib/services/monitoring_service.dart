@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import '../models/activity_log.dart';
 import '../models/monitoring_config.dart';
 import 'windows_activity_tracker.dart';
+import 'activity_parser.dart';
 
 class MonitoringService {
   static const platform = MethodChannel('com.activitytracker/monitoring');
@@ -50,9 +51,24 @@ class MonitoringService {
         print('📸 Screenshot capture enabled, interval: ${config.screenshotInterval}s');
         _screenshotTimer = Timer.periodic(
           Duration(seconds: config.screenshotInterval),
-          (_) {
+          (_) async {
             print('⏰ Screenshot timer triggered');
-            captureScreenshot();
+            final path = await captureScreenshot();
+            if (path != null) {
+              // Create a screenshot activity log
+              final windowInfo = await getActiveWindow();
+              final log = ActivityLog(
+                id: _uuid.v4(),
+                timestamp: DateTime.now(),
+                activeWindow: windowInfo['title'],
+                applicationName: windowInfo['application'],
+                screenshotPath: path,
+                keystrokes: 0,
+                mouseClicks: 0,
+                isIdle: false,
+              );
+              onActivityTracked?.call(log);
+            }
           },
         );
       } else {
@@ -222,6 +238,12 @@ class MonitoringService {
     final inputActivity = await getInputActivity();
     final isIdle = await isSystemIdle(300);
 
+    // Parse detailed activity information
+    final detailedActivity = ActivityParser.parse(
+      windowInfo['application'],
+      windowInfo['title'],
+    );
+
     final log = ActivityLog(
       id: _uuid.v4(),
       timestamp: DateTime.now(),
@@ -230,9 +252,11 @@ class MonitoringService {
       keystrokes: inputActivity['keystrokes']!,
       mouseClicks: inputActivity['mouseClicks']!,
       isIdle: isIdle,
+      detailedInfo: detailedActivity.details,
     );
     
     print('✅ Activity log created: ${log.applicationName} (keystrokes: ${log.keystrokes}, clicks: ${log.mouseClicks}, idle: ${log.isIdle})');
+    print('📝 Detailed: ${log.detailedSummary}');
     return log;
   }
   
