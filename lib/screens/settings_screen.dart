@@ -12,8 +12,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _intervalController;
-  late TextEditingController _serverUrlController;
-  late TextEditingController _apiKeyController;
 
   @override
   void initState() {
@@ -22,15 +20,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _intervalController = TextEditingController(
       text: config.screenshotInterval.toString(),
     );
-    _serverUrlController = TextEditingController(text: config.serverUrl);
-    _apiKeyController = TextEditingController(text: config.apiKey);
   }
 
   @override
   void dispose() {
     _intervalController.dispose();
-    _serverUrlController.dispose();
-    _apiKeyController.dispose();
     super.dispose();
   }
 
@@ -53,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               const Text(
-                'Monitoring Settings',
+                'Screenshot Settings',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
@@ -67,72 +61,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   );
                 },
               ),
-              if (config.screenshotEnabled)
+              if (config.screenshotEnabled) ...[
+                const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TextField(
                     controller: _intervalController,
                     decoration: const InputDecoration(
                       labelText: 'Screenshot Interval (seconds)',
-                      helperText: 'How often to capture screenshots',
+                      helperText: 'How often to capture screenshots (minimum: 10 seconds)',
+                      border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
                   ),
                 ),
-              const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Keystroke Tracking'),
-                subtitle: const Text('Track keyboard activity'),
-                value: config.keystrokeTracking,
-                onChanged: (value) {
-                  provider.updateConfig(
-                    config.copyWith(keystrokeTracking: value),
-                  );
-                },
+              ],
+              const SizedBox(height: 24),
+              const Text(
+                'Storage Location',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              SwitchListTile(
-                title: const Text('Mouse Tracking'),
-                subtitle: const Text('Track mouse activity'),
-                value: config.mouseTracking,
-                onChanged: (value) {
-                  provider.updateConfig(
-                    config.copyWith(mouseTracking: value),
-                  );
-                },
-              ),
-              SwitchListTile(
-                title: const Text('Application Tracking'),
-                subtitle: const Text('Track active applications'),
-                value: config.applicationTracking,
-                onChanged: (value) {
-                  provider.updateConfig(
-                    config.copyWith(applicationTracking: value),
-                  );
-                },
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Screenshots are saved to:',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Documents/screenshots/activity_tracker/',
+                      style: TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Files are named with timestamp: screenshot_YYYYMMDD_HHMM_SS.png',
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               const Text(
-                'Server Configuration',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                'Privacy & Security',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _serverUrlController,
-                decoration: const InputDecoration(
-                  labelText: 'Server URL',
-                  hintText: 'https://api.example.com',
-                  border: OutlineInputBorder(),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _apiKeyController,
-                decoration: const InputDecoration(
-                  labelText: 'API Key',
-                  hintText: 'Enter your API key',
-                  border: OutlineInputBorder(),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info, size: 16, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text(
+                          'Data Storage',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '• All screenshots are stored locally on your device\n'
+                      '• No data is sent to external servers\n'
+                      '• You can delete screenshots manually from the folder',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ],
                 ),
-                obscureText: true,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -150,10 +161,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final provider = context.read<ActivityProvider>();
     final config = provider.config;
 
+    // Validate interval
+    int interval = int.tryParse(_intervalController.text) ?? 30;
+    if (interval < 10) {
+      interval = 10; // Minimum 10 seconds
+      _intervalController.text = '10';
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Minimum interval is 10 seconds'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+
     final newConfig = config.copyWith(
-      screenshotInterval: int.tryParse(_intervalController.text) ?? 300,
-      serverUrl: _serverUrlController.text,
-      apiKey: _apiKeyController.text,
+      screenshotInterval: interval,
     );
 
     print('💾 Saving settings: ${newConfig.toJson()}');
