@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/activity_provider.dart';
 import '../services/monitoring_service.dart';
 import '../services/permission_service.dart';
+import 'reports_screen.dart';
 import 'dart:io';
 
 class HomeScreen extends StatefulWidget {
@@ -44,8 +45,17 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Activity Tracker'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.bar_chart),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ReportsScreen()),
+            ),
+            tooltip: 'Reports',
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.pushNamed(context, '/settings'),
+            tooltip: 'Settings',
           ),
         ],
       ),
@@ -227,6 +237,11 @@ class _HomeScreenState extends State<HomeScreen> {
               provider.todayMouseClicks.toString(),
             ),
             _buildStatItem(
+              Icons.camera_alt,
+              'Screenshots',
+              provider.screenshotCount.toString(),
+            ),
+            _buildStatItem(
               Icons.list,
               'Logs',
               provider.activityLogs.length.toString(),
@@ -269,18 +284,95 @@ class _HomeScreenState extends State<HomeScreen> {
         return Card(
           child: ListTile(
             leading: Icon(
-              log.isIdle ? Icons.bedtime : Icons.computer,
-              color: log.isIdle ? Colors.grey : Colors.blue,
+              log.screenshotPath != null 
+                  ? Icons.camera_alt 
+                  : (log.isIdle ? Icons.bedtime : Icons.computer),
+              color: log.screenshotPath != null 
+                  ? Colors.green 
+                  : (log.isIdle ? Colors.grey : Colors.blue),
             ),
             title: Text(log.applicationName),
-            subtitle: Text(log.activeWindow),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log.screenshotPath != null 
+                      ? '📸 Screenshot captured'
+                      : log.detailedSummary,
+                  style: const TextStyle(fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (log.screenshotPath != null)
+                  Text(
+                    log.screenshotPath!,
+                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (log.detailedInfo != null && log.detailedInfo!.isNotEmpty && log.screenshotPath == null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Wrap(
+                      spacing: 4,
+                      children: log.detailedInfo!.entries.take(3).map((entry) {
+                        return Chip(
+                          label: Text(
+                            '${entry.key}: ${entry.value}',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                          padding: EdgeInsets.zero,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+              ],
+            ),
             trailing: Text(
               '${log.timestamp.hour}:${log.timestamp.minute.toString().padLeft(2, '0')}',
               style: const TextStyle(fontSize: 12),
             ),
+            onTap: log.screenshotPath != null 
+                ? () => _showScreenshot(context, log.screenshotPath!)
+                : null,
           ),
         );
       },
+    );
+  }
+
+  void _showScreenshot(BuildContext context, String path) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBar(
+              title: const Text('Screenshot'),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            Expanded(
+              child: Image.file(
+                File(path),
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Text('Failed to load screenshot'),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

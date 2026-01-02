@@ -10,7 +10,7 @@ class MonitoringConfig {
 
   MonitoringConfig({
     this.screenshotEnabled = true,
-    this.screenshotInterval = 300, // 5 minutes default
+    this.screenshotInterval = 30, // 30 seconds default (easier for testing)
     this.keystrokeTracking = true,
     this.mouseTracking = true,
     this.applicationTracking = true,
@@ -35,7 +35,7 @@ class MonitoringConfig {
   factory MonitoringConfig.fromJson(Map<String, dynamic> json) {
     return MonitoringConfig(
       screenshotEnabled: json['screenshotEnabled'] ?? true,
-      screenshotInterval: json['screenshotInterval'] ?? 300,
+      screenshotInterval: json['screenshotInterval'] ?? 30,
       keystrokeTracking: json['keystrokeTracking'] ?? true,
       mouseTracking: json['mouseTracking'] ?? true,
       applicationTracking: json['applicationTracking'] ?? true,
