@@ -1,7 +1,5 @@
 import Cocoa
 import FlutterMacOS
-//import MonitorPlugin
-//import PermissionPlugin
 
 @main
 class AppDelegate: FlutterAppDelegate {
@@ -19,5 +17,6 @@ class AppDelegate: FlutterAppDelegate {
     // Register custom plugins
     MonitoringPlugin.register(with: controller.registrar(forPlugin: "MonitoringPlugin"))
     PermissionPlugin.register(with: controller.registrar(forPlugin: "PermissionPlugin"))
+    ComprehensiveMonitoringPlugin.register(with: controller.registrar(forPlugin: "ComprehensiveMonitoringPlugin"))
   }
 }

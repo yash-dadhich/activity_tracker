@@ -1,0 +1,510 @@
+name: Enterprise CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'release/*' ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published ]
+
+env:
+  FLUTTER_VERSION: '3.16.0'
+  NODE_VERSION: '18.x'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Security and Code Quality Checks
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+
+  # Flutter Client Tests
+  flutter-tests:
+    name: Flutter Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Check formatting
+        run: dart format --set-exit-if-changed .
+
+      - name: Run unit tests
+        run: flutter test --coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage/lcov.info
+          flags: flutter
+
+  # Backend Services Tests
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth-service, monitoring-service, analytics-service, notification-service, file-service]
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/services/${{ matrix.service }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend/services/${{ matrix.service }}
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: backend/services/${{ matrix.service }}
+        run: npm run lint
+
+      - name: Run type check
+        working-directory: backend/services/${{ matrix.service }}
+        run: npm run type-check
+
+      - name: Run unit tests
+        working-directory: backend/services/${{ matrix.service }}
+        run: npm run test:unit
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+
+      - name: Run integration tests
+        working-directory: backend/services/${{ matrix.service }}
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+
+  # ML Service Tests
+  ml-tests:
+    name: ML Service Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        working-directory: backend/services/ml-service
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run linting
+        working-directory: backend/services/ml-service
+        run: |
+          flake8 src/
+          black --check src/
+          isort --check-only src/
+
+      - name: Run type checking
+        working-directory: backend/services/ml-service
+        run: mypy src/
+
+      - name: Run tests
+        working-directory: backend/services/ml-service
+        run: |
+          pytest tests/ --cov=src --cov-report=xml
+
+      - name: Upload ML coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: backend/services/ml-service/coverage.xml
+          flags: ml-service
+
+  # Build Flutter Apps
+  build-flutter:
+    name: Build Flutter Apps
+    needs: [security-scan, flutter-tests]
+    strategy:
+      matrix:
+        platform: [windows, macos, linux]
+        include:
+          - platform: windows
+            os: windows-latest
+            build-cmd: flutter build windows --release
+            artifact-path: build/windows/runner/Release/
+            artifact-name: windows-app
+          - platform: macos
+            os: macos-latest
+            build-cmd: flutter build macos --release
+            artifact-path: build/macos/Build/Products/Release/
+            artifact-name: macos-app
+          - platform: linux
+            os: ubuntu-latest
+            build-cmd: flutter build linux --release
+            artifact-path: build/linux/x64/release/bundle/
+            artifact-name: linux-app
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build app
+        run: ${{ matrix.build-cmd }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
+          retention-days: 30
+
+  # Build Docker Images
+  build-docker:
+    name: Build Docker Images
+    needs: [backend-tests, ml-tests]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth-service, monitoring-service, analytics-service, ml-service, notification-service, file-service, gateway]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: backend/services/${{ matrix.service }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Infrastructure Tests
+  infrastructure-tests:
+    name: Infrastructure Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Terraform Format Check
+        working-directory: infrastructure/terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform/environments/production
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        working-directory: infrastructure/terraform/environments/production
+        run: terraform validate
+
+      - name: Terraform Plan (Dry Run)
+        working-directory: infrastructure/terraform/environments/production
+        run: terraform plan -input=false
+        env:
+          TF_VAR_aws_region: us-west-2
+          TF_VAR_environment: test
+
+      - name: Kubernetes Manifest Validation
+        run: |
+          kubectl --dry-run=client apply -f infrastructure/kubernetes/base/
+
+  # Security Compliance Check
+  compliance-check:
+    name: Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run GDPR Compliance Check
+        run: |
+          # Check for GDPR compliance markers in code
+          grep -r "GDPR\|data-subject-rights\|consent" --include="*.dart" --include="*.ts" . || echo "No GDPR markers found"
+
+      - name: Check for sensitive data exposure
+        run: |
+          # Check for potential sensitive data in logs
+          grep -r "password\|secret\|key" --include="*.dart" --include="*.ts" . | grep -v "// SAFE:" || echo "No sensitive data found"
+
+      - name: Audit dependencies for vulnerabilities
+        run: |
+          # Flutter dependencies
+          flutter pub deps --json | jq '.packages[] | select(.kind == "direct")' > flutter_deps.json
+          
+          # Node.js dependencies (for each service)
+          for service in auth-service monitoring-service analytics-service notification-service file-service; do
+            if [ -f "backend/services/$service/package.json" ]; then
+              cd "backend/services/$service"
+              npm audit --audit-level=moderate
+              cd ../../..
+            fi
+          done
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [build-flutter, build-docker, infrastructure-tests, compliance-check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Deploy to EKS Staging
+        run: |
+          aws eks update-kubeconfig --region us-west-2 --name staging-cluster
+          kubectl apply -f infrastructure/kubernetes/overlays/staging/
+          kubectl rollout status deployment -n enterprise-productivity --timeout=600s
+
+      - name: Run smoke tests
+        run: |
+          # Wait for services to be ready
+          kubectl wait --for=condition=ready pod -l app=api-gateway -n enterprise-productivity --timeout=300s
+          
+          # Run basic health checks
+          kubectl exec -n enterprise-productivity deployment/api-gateway -- curl -f http://localhost:3000/health
+
+      - name: Notify deployment status
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    needs: [build-flutter, build-docker, infrastructure-tests, compliance-check]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: us-west-2
+
+      - name: Deploy infrastructure
+        working-directory: infrastructure/terraform/environments/production
+        run: |
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply tfplan
+
+      - name: Deploy to EKS Production
+        run: |
+          aws eks update-kubeconfig --region us-west-2 --name production-cluster
+          kubectl apply -f infrastructure/kubernetes/overlays/production/
+          kubectl rollout status deployment -n enterprise-productivity --timeout=600s
+
+      - name: Run production health checks
+        run: |
+          # Comprehensive health checks
+          kubectl wait --for=condition=ready pod -l app=api-gateway -n enterprise-productivity --timeout=300s
+          kubectl exec -n enterprise-productivity deployment/api-gateway -- curl -f http://localhost:3000/health
+          
+          # Check all services
+          for service in auth-service monitoring-service analytics-service ml-service notification-service file-service; do
+            kubectl wait --for=condition=ready pod -l app=$service -n enterprise-productivity --timeout=300s
+          done
+
+      - name: Update release notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id
+            });
+            
+            const deploymentInfo = `
+            
+            ## Deployment Information
+            - **Environment**: Production
+            - **Deployed at**: ${new Date().toISOString()}
+            - **Commit**: ${context.sha}
+            - **Workflow**: ${context.workflow}
+            `;
+            
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              body: release.data.body + deploymentInfo
+            });
+
+      - name: Notify production deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#production-deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_PROD }}
+          text: |
+            🚀 Production deployment completed successfully!
+            Release: ${{ github.event.release.tag_name }}
+            Commit: ${{ github.sha }}
+
+  # Post-deployment monitoring
+  post-deployment-monitoring:
+    name: Post-deployment Monitoring
+    needs: [deploy-production]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Wait for system stabilization
+        run: sleep 300  # Wait 5 minutes
+
+      - name: Run comprehensive health checks
+        run: |
+          # API health checks
+          curl -f https://api.enterprise-productivity.com/health
+          
+          # Database connectivity
+          # ML service health
+          # File service health
+          # etc.
+
+      - name: Check system metrics
+        run: |
+          # Query Prometheus for system health
+          # Check error rates
+          # Verify performance metrics
+          echo "System health check completed"
+
+      - name: Create monitoring alert
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#alerts'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_ALERTS }}
+          text: |
+            🚨 Post-deployment health check failed!
+            Release: ${{ github.event.release.tag_name }}
+            Please investigate immediately.

@@ -1,0 +1,197 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+      - auth-service
+      - monitoring-service
+    networks:
+      - enterprise-network
+
+  # Authentication Service
+  auth-service:
+    build: ./services/auth-service
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://auth_user:${AUTH_DB_PASSWORD}@postgres:5432/auth_db
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - enterprise-network
+
+  # Monitoring Service
+  monitoring-service:
+    build: ./services/monitoring-service
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://monitoring_user:${MONITORING_DB_PASSWORD}@postgres:5432/monitoring_db
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - enterprise-network
+
+  # Analytics Service
+  analytics-service:
+    build: ./services/analytics-service
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://analytics_user:${ANALYTICS_DB_PASSWORD}@postgres:5432/analytics_db
+      - MONGODB_URL=mongodb://mongo:27017/analytics
+      - REDIS_URL=redis://redis:6379
+      - ML_SERVICE_URL=http://ml-service:8000
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+      - ml-service
+    networks:
+      - enterprise-network
+
+  # ML Service (Python/FastAPI)
+  ml-service:
+    build: ./services/ml-service
+    environment:
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - enterprise-network
+
+  # Notification Service
+  notification-service:
+    build: ./services/notification-service
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://notification_user:${NOTIFICATION_DB_PASSWORD}@postgres:5432/notification_db
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - enterprise-network
+
+  # File Service
+  file-service:
+    build: ./services/file-service
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://file_user:${FILE_DB_PASSWORD}@postgres:5432/file_db
+      - REDIS_URL=redis://redis:6379
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - file-storage:/app/storage
+    networks:
+      - enterprise-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=enterprise_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./shared/database/init:/docker-entrypoint-initdb.d
+    networks:
+      - enterprise-network
+
+  # MongoDB for Analytics
+  mongo:
+    image: mongo:6.0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - enterprise-network
+
+  # Redis for Caching
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - enterprise-network
+
+  # RabbitMQ for Message Queuing
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "15672:15672" # Management UI
+    networks:
+      - enterprise-network
+
+  # Prometheus for Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - enterprise-network
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - enterprise-network
+
+volumes:
+  postgres-data:
+  mongo-data:
+  redis-data:
+  rabbitmq-data:
+  prometheus-data:
+  grafana-data:
+  file-storage:
+
+networks:
+  enterprise-network:
+    driver: bridge
