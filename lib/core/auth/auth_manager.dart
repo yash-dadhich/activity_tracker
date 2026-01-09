@@ -354,6 +354,8 @@ extension UserJson on User {
         (e) => e.toString().split('.').last == json['status'],
         orElse: () => UserStatus.active,
       ),
+      organizationId: json['organizationId'],
+      companyId: json['companyId'],
       departmentId: json['departmentId'],
       managerId: json['managerId'],
       profileImageUrl: json['profileImageUrl'],

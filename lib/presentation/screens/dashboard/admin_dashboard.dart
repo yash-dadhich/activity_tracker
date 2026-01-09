@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/auth_manager.dart';
 import '../../../providers/admin_provider.dart';
 import 'role_based_dashboard.dart';
+import '../admin/companies_screen.dart';
+import '../admin/departments_screen.dart';
+import '../admin/team_members_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -501,16 +504,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
           childAspectRatio: 1.5,
           children: [
             DashboardCard(
-              title: 'User Management',
-              subtitle: 'Manage users & roles',
-              leading: const Icon(Icons.people, color: Colors.blue),
+              title: 'Companies',
+              subtitle: 'Manage companies',
+              leading: const Icon(Icons.corporate_fare, color: Colors.blue),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Scaffold(
-                    appBar: AppBar(title: const Text('User Management')),
-                    body: const Center(child: Text('User Management - Coming Soon')),
-                  ),
+                  builder: (context) => const CompaniesScreen(),
+                ),
+              ),
+            ),
+            DashboardCard(
+              title: 'Departments',
+              subtitle: 'Manage departments',
+              leading: const Icon(Icons.account_tree, color: Colors.purple),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DepartmentsScreen(),
+                ),
+              ),
+            ),
+            DashboardCard(
+              title: 'Team Members',
+              subtitle: 'Manage users & roles',
+              leading: const Icon(Icons.people, color: Colors.green),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TeamMembersScreen(),
                 ),
               ),
             ),

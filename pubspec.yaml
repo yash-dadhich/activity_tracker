@@ -39,6 +39,7 @@ dependencies:
   encrypt: ^5.0.3
   permission_handler: ^11.3.0
   path: ^1.8.3
+  crypto: ^3.0.3
   
   # Hotkey detection (for activity tracking)
   hotkey_manager: ^0.2.3

@@ -11,7 +11,9 @@ class User extends Equatable {
   final String lastName;
   final UserRole role;
   final UserStatus status;
-  final String departmentId;
+  final String? organizationId;
+  final String? companyId;
+  final String? departmentId;
   final String? managerId;
   final String? profileImageUrl;
   final DateTime createdAt;
@@ -27,7 +29,9 @@ class User extends Equatable {
     required this.lastName,
     required this.role,
     required this.status,
-    required this.departmentId,
+    this.organizationId,
+    this.companyId,
+    this.departmentId,
     this.managerId,
     this.profileImageUrl,
     required this.createdAt,
@@ -51,6 +55,8 @@ class User extends Equatable {
     String? lastName,
     UserRole? role,
     UserStatus? status,
+    String? organizationId,
+    String? companyId,
     String? departmentId,
     String? managerId,
     String? profileImageUrl,
@@ -67,6 +73,8 @@ class User extends Equatable {
       lastName: lastName ?? this.lastName,
       role: role ?? this.role,
       status: status ?? this.status,
+      organizationId: organizationId ?? this.organizationId,
+      companyId: companyId ?? this.companyId,
       departmentId: departmentId ?? this.departmentId,
       managerId: managerId ?? this.managerId,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
@@ -92,6 +100,8 @@ class User extends Equatable {
         (e) => e.toString().split('.').last == json['status'],
         orElse: () => UserStatus.active,
       ),
+      organizationId: json['organizationId'],
+      companyId: json['companyId'],
       departmentId: json['departmentId'],
       managerId: json['managerId'],
       profileImageUrl: json['profileImageUrl'],
@@ -111,6 +121,8 @@ class User extends Equatable {
       'lastName': lastName,
       'role': role.toString().split('.').last,
       'status': status.toString().split('.').last,
+      'organizationId': organizationId,
+      'companyId': companyId,
       'departmentId': departmentId,
       'managerId': managerId,
       'profileImageUrl': profileImageUrl,
@@ -130,6 +142,8 @@ class User extends Equatable {
         lastName,
         role,
         status,
+        organizationId,
+        companyId,
         departmentId,
         managerId,
         profileImageUrl,

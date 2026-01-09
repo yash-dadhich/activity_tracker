@@ -5,6 +5,7 @@ import '../../../domain/entities/user.dart';
 import 'employee_dashboard.dart';
 import 'manager_dashboard.dart';
 import 'admin_dashboard.dart';
+import '../super_admin/super_admin_dashboard.dart';
 import '../auth/consent_screen.dart';
 
 class RoleBasedDashboard extends StatelessWidget {
@@ -36,8 +37,9 @@ class RoleBasedDashboard extends StatelessWidget {
           case UserRole.manager:
             return const ManagerDashboard();
           case UserRole.admin:
-          case UserRole.superAdmin:
             return const AdminDashboard();
+          case UserRole.superAdmin:
+            return const SuperAdminDashboard();
         }
       },
     );

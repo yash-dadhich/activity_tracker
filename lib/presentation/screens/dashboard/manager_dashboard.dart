@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/auth/auth_manager.dart';
-import '../../../providers/activity_provider.dart';
 import '../../../providers/team_provider.dart';
+import '../../../providers/organization_provider.dart';
+import '../../widgets/clock_in_out_widget.dart';
 import 'role_based_dashboard.dart';
+import 'employee_logs_screen.dart';
 
 class ManagerDashboard extends StatefulWidget {
   const ManagerDashboard({super.key});
@@ -20,8 +22,18 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
   }
 
   Future<void> _loadDashboardData() async {
+    final authManager = context.read<AuthManager>();
+    final departmentId = authManager.currentUser?.departmentId;
+    final organizationId = authManager.currentUser?.organizationId;
+    
     final teamProvider = context.read<TeamProvider>();
     await teamProvider.loadTeamData();
+    
+    // Load department info if available
+    if (organizationId != null) {
+      final orgProvider = context.read<OrganizationProvider>();
+      await orgProvider.loadDepartments(organizationId: organizationId);
+    }
   }
 
   @override
@@ -36,6 +48,8 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildWelcomeSection(),
+              const SizedBox(height: 24),
+              const ClockInOutWidget(),
               const SizedBox(height: 24),
               _buildTeamOverview(),
               const SizedBox(height: 24),
@@ -54,9 +68,13 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
   }
 
   Widget _buildWelcomeSection() {
-    return Consumer<AuthManager>(
-      builder: (context, authManager, child) {
+    return Consumer2<AuthManager, OrganizationProvider>(
+      builder: (context, authManager, orgProvider, child) {
         final user = authManager.currentUser;
+        final departmentId = user?.departmentId;
+        final department = departmentId != null
+            ? orgProvider.departments.where((d) => d.id == departmentId).firstOrNull
+            : null;
         
         return DashboardCard(
           title: 'Team Dashboard',
@@ -82,6 +100,38 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                   color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
+              if (department != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_tree, color: Colors.purple, size: 20),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Department',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                          Text(
+                            department.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Consumer<TeamProvider>(
                 builder: (context, teamProvider, child) {
@@ -158,11 +208,21 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Team Overview',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Team Overview',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showTeamMembersList(),
+                  icon: const Icon(Icons.people),
+                  label: const Text('View All Members'),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             GridView.count(
@@ -208,6 +268,113 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
           ],
         );
       },
+    );
+  }
+
+  void _showTeamMembersList() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Team Members',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Consumer<TeamProvider>(
+                    builder: (context, teamProvider, child) {
+                      return ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: teamProvider.teamMembers.length,
+                        itemBuilder: (context, index) {
+                          final member = teamProvider.teamMembers[index];
+                          return Card(
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                child: Text(
+                                  '${member.firstName[0]}${member.lastName[0]}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              title: Text('${member.firstName} ${member.lastName}'),
+                              subtitle: Text(member.email),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: member.status == 'active'
+                                          ? Colors.green.withOpacity(0.1)
+                                          : Colors.grey.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      member.status.toString().split('.').last,
+                                      style: TextStyle(
+                                        color: member.status.toString().split('.').last == 'active'
+                                            ? Colors.green
+                                            : Colors.grey,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.chevron_right),
+                                ],
+                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EmployeeLogsScreen(
+                                      employee: member,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 

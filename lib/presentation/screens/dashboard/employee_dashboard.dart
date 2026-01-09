@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/auth_manager.dart';
 import '../../../providers/activity_provider.dart';
 import '../../../services/monitoring_service.dart';
+import '../../widgets/clock_in_out_widget.dart';
 import 'role_based_dashboard.dart';
 import 'detailed_activity_dashboard.dart';
 
@@ -37,6 +38,8 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildWelcomeSection(),
+              const SizedBox(height: 24),
+              const ClockInOutWidget(),
               const SizedBox(height: 24),
               _buildMonitoringStatus(),
               const SizedBox(height: 24),
