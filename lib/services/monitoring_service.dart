@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
-import 'package:screen_capturer/screen_capturer.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../models/activity_log.dart';
@@ -13,7 +12,6 @@ class MonitoringService {
   
   Timer? _screenshotTimer;
   final _uuid = const Uuid();
-  final _screenCapturer = ScreenCapturer.instance;
   
   // Callback for screenshot capture
   Function(String)? onScreenshotCaptured;
@@ -101,16 +99,15 @@ class MonitoringService {
           }
         }
       } else {
-        // Use screen_capturer plugin for Windows/Linux
-        final capturedData = await _screenCapturer.capture(
-          mode: CaptureMode.screen,
-          imagePath: fullPath,
-          silent: true,
-        );
-        
-        if (capturedData != null && capturedData.imagePath != null) {
-          print('✅ Screenshot captured: ${capturedData.imagePath}');
-          return capturedData.imagePath;
+        // Use native platform method for screenshot
+        try {
+          final result = await platform.invokeMethod('captureScreenshot');
+          if (result != null) {
+            print('✅ Screenshot captured: $fullPath');
+            return fullPath;
+          }
+        } catch (e) {
+          print('⚠️ Native screenshot failed: $e');
         }
       }
       

@@ -31,6 +31,7 @@
 		B30BCEAC20A236999CA70707 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DADBC11BD7598BAAAD800F38 /* Pods_RunnerTests.framework */; };
 		1BEE6FAD61514EFABA14FEA2 /* MonitoringPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B08D1A85D543D795979AAB /* MonitoringPlugin.swift */; };
 		59095B737C8A43159A2F099D /* PermissionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D7A62ADCCB4371A723D71E /* PermissionPlugin.swift */; };
+		348D0F8AFE104073ABB2819B /* ComprehensiveMonitoringPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1415E7EC9214802BF6092F4 /* ComprehensiveMonitoringPlugin.swift */; };
 	/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +93,7 @@
 		F751A7E70E6809D5FE675274 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		22B08D1A85D543D795979AAB /* MonitoringPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitoringPlugin.swift; sourceTree = "<group>"; };
 		88D7A62ADCCB4371A723D71E /* PermissionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionPlugin.swift; sourceTree = "<group>"; };
+		F1415E7EC9214802BF6092F4 /* ComprehensiveMonitoringPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComprehensiveMonitoringPlugin.swift; sourceTree = "<group>"; };
 	/* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -183,6 +185,7 @@
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				22B08D1A85D543D795979AAB /* MonitoringPlugin.swift */,
 				88D7A62ADCCB4371A723D71E /* PermissionPlugin.swift */,
+				F1415E7EC9214802BF6092F4 /* ComprehensiveMonitoringPlugin.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -448,6 +451,7 @@
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 				1BEE6FAD61514EFABA14FEA2 /* MonitoringPlugin.swift in Sources */,
 				59095B737C8A43159A2F099D /* PermissionPlugin.swift in Sources */,
+				348D0F8AFE104073ABB2819B /* ComprehensiveMonitoringPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
