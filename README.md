@@ -4,13 +4,25 @@ A cross-platform desktop application for monitoring employee activity on Windows
 
 ## Features
 
-- **Screenshot Capture**: Automatic screenshots at configurable intervals
+- **Invisible Screenshot Capture**: Automatic screenshots at configurable intervals (Windows: truly invisible using GDI+ API)
 - **Active Window Tracking**: Monitor which applications and windows are active
 - **Keyboard & Mouse Activity**: Track keystrokes and mouse clicks
 - **Idle Detection**: Detect when the system is idle
 - **System Tray Widget**: Minimizes to system tray for unobtrusive monitoring
 - **Configurable Settings**: Customize monitoring intervals and features
 - **Data Encryption**: Secure data transmission to server
+
+### 🔇 Invisible Screenshot Technology (Windows)
+
+On Windows, screenshots are captured using direct Windows GDI+ API calls via FFI:
+- ✅ **Completely invisible** - No Snipping Tool, no UI, no visual feedback
+- ✅ **No screen flashing** - Silent capture using BitBlt with CAPTUREBLT
+- ✅ **High performance** - Direct system calls, minimal overhead
+- ✅ **Reliable** - Uses stable Windows APIs
+
+**📖 Documentation:**
+- [Implementation Guide](INVISIBLE_SCREENSHOT_IMPLEMENTATION.md) - Technical details and testing
+- [Legal Compliance Warning](LEGAL_COMPLIANCE_WARNING.md) - **MUST READ before deployment**
 
 ## Platform Support
 
@@ -74,23 +86,46 @@ Configure the backend server URL and API key in Settings:
 
 ## Privacy & Compliance
 
-⚠️ **Important Legal Notice**
+⚠️ **CRITICAL: READ BEFORE DEPLOYMENT**
 
-This software is designed for **enterprise employee monitoring** purposes. Before deployment:
+This software includes **invisible screenshot capture** functionality. You **MUST** ensure legal compliance before deployment.
 
-1. **Employee Consent**: Ensure employees are informed and provide written consent
-2. **Legal Compliance**: Verify compliance with local labor laws and regulations
-3. **Data Protection**: Comply with GDPR, CCPA, and other privacy regulations
-4. **Transparency**: Clearly communicate what is being monitored and why
+### 📋 Required Actions
 
-### Recommended Practices
+1. **Read Legal Documentation**: [LEGAL_COMPLIANCE_WARNING.md](LEGAL_COMPLIANCE_WARNING.md)
+2. **Consult Legal Counsel**: Speak with an employment lawyer in your jurisdiction
+3. **Employee Consent**: Obtain written consent from all monitored employees
+4. **Create Policies**: Develop clear monitoring and privacy policies
+5. **Implement Safeguards**: Data encryption, access controls, retention policies
+
+### ⚖️ Legal Requirements
+
+- **Employee Notification**: Employees MUST be informed they are being monitored
+- **Written Consent**: Required in most jurisdictions
+- **GDPR Compliance**: If operating in EU (fines up to €20M)
+- **State Laws**: US state laws vary significantly
+- **Legitimate Purpose**: Must have valid business reason
+
+### ❌ Prohibited Uses
+
+- Monitoring without employee knowledge (illegal in most jurisdictions)
+- Capturing personal devices without consent
+- Monitoring during breaks or personal time
+- Discrimination or harassment
+- Capturing sensitive personal information
+
+### ✅ Recommended Practices
 
 - Provide clear written notice to employees
 - Obtain explicit consent before installation
 - Use monitoring data only for legitimate business purposes
-- Implement data retention policies
+- Implement data retention policies (e.g., 30 days)
 - Secure all collected data with encryption
 - Provide employees access to their monitoring data
+- Allow employees to request data deletion (GDPR right)
+- Regular policy reviews and compliance audits
+
+**For complete legal guidance, see [LEGAL_COMPLIANCE_WARNING.md](LEGAL_COMPLIANCE_WARNING.md)**
 
 ## Development
 

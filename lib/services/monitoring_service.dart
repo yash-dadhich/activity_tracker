@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../models/activity_log.dart';
 import '../models/monitoring_config.dart';
+import 'silent_screenshot_service.dart';
 
 class MonitoringService {
   static const platform = MethodChannel('com.activitytracker/monitoring');
@@ -14,6 +15,7 @@ class MonitoringService {
   Timer? _screenshotTimer;
   final _uuid = const Uuid();
   final _screenCapturer = ScreenCapturer.instance;
+  final _silentScreenshot = SilentScreenshotService();
   
   // Callback for screenshot capture
   Function(String)? onScreenshotCaptured;
@@ -83,12 +85,23 @@ class MonitoringService {
         await _createScreenshotsDirectory();
       }
       
-      final timestamp = DateTime.now();
-      final filename = 'screenshot_${timestamp.year}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}_${timestamp.second.toString().padLeft(2, '0')}.png';
-      final fullPath = path.join(_screenshotsPath!, filename);
-      
-      if (Platform.isMacOS) {
+      if (Platform.isWindows) {
+        // Use silent screenshot service for Windows (truly invisible)
+        print('🔇 Using silent screenshot service for Windows');
+        final filePath = await _silentScreenshot.captureScreenshot();
+        if (filePath != null) {
+          print('✅ Silent screenshot captured: $filePath');
+          return filePath;
+        } else {
+          print('⚠️ Silent screenshot failed');
+          return null;
+        }
+      } else if (Platform.isMacOS) {
         // Use native method for macOS
+        final timestamp = DateTime.now();
+        final filename = 'screenshot_${timestamp.year}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}_${timestamp.second.toString().padLeft(2, '0')}.png';
+        final fullPath = path.join(_screenshotsPath!, filename);
+        
         final String? nativePath = await platform.invokeMethod('captureScreenshot');
         if (nativePath != null) {
           // Move the file to our desired location
@@ -101,7 +114,11 @@ class MonitoringService {
           }
         }
       } else {
-        // Use screen_capturer plugin for Windows/Linux
+        // Use screen_capturer plugin for Linux
+        final timestamp = DateTime.now();
+        final filename = 'screenshot_${timestamp.year}${timestamp.month.toString().padLeft(2, '0')}${timestamp.day.toString().padLeft(2, '0')}_${timestamp.hour.toString().padLeft(2, '0')}${timestamp.minute.toString().padLeft(2, '0')}_${timestamp.second.toString().padLeft(2, '0')}.png';
+        final fullPath = path.join(_screenshotsPath!, filename);
+        
         final capturedData = await _screenCapturer.capture(
           mode: CaptureMode.screen,
           imagePath: fullPath,
