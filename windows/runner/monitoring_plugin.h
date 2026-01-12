@@ -10,7 +10,7 @@
 
 class MonitoringPlugin {
  public:
-  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
+  static void RegisterWithRegistrar(FlutterDesktopPluginRegistrarRef registrar);
 
   MonitoringPlugin();
   virtual ~MonitoringPlugin();

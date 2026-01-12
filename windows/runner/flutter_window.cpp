@@ -28,9 +28,8 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   
   // Register monitoring plugin manually
-  auto registrar_ref = flutter_controller_->engine()->GetRegistrarForPlugin("MonitoringPlugin");
-  monitoring_registrar_ = std::make_unique<flutter::PluginRegistrarWindows>(registrar_ref);
-  MonitoringPlugin::RegisterWithRegistrar(monitoring_registrar_.get());
+  MonitoringPlugin::RegisterWithRegistrar(
+      flutter_controller_->engine()->GetRegistrarForPlugin("MonitoringPlugin"));
   
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 

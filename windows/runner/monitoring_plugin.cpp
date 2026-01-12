@@ -17,9 +17,10 @@ using namespace Gdiplus;
 MonitoringPlugin* MonitoringPlugin::instance_ = nullptr;
 
 void MonitoringPlugin::RegisterWithRegistrar(
-    flutter::PluginRegistrarWindows* registrar) {
+    FlutterDesktopPluginRegistrarRef registrar) {
   auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(), "com.activitytracker/monitoring",
+      flutter::PluginRegistrarGetMessenger(registrar), 
+      "com.activitytracker/monitoring",
       &flutter::StandardMethodCodec::GetInstance());
 
   auto plugin = std::make_unique<MonitoringPlugin>();
