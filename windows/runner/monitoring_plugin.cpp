@@ -3,6 +3,7 @@
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
+#include <flutter_windows.h>
 #include <windows.h>
 #include <psapi.h>
 #include <gdiplus.h>
@@ -17,9 +18,13 @@ using namespace Gdiplus;
 MonitoringPlugin* MonitoringPlugin::instance_ = nullptr;
 
 void MonitoringPlugin::RegisterWithRegistrar(
-    FlutterDesktopPluginRegistrarRef registrar) {
+    FlutterDesktopPluginRegistrarRef registrar_ref) {
+  
+  // Create C++ wrapper for the registrar
+  static flutter::PluginRegistrar registrar(registrar_ref);
+  
   auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      FlutterDesktopPluginRegistrarGetMessenger(registrar), 
+      registrar.messenger(), 
       "com.activitytracker/monitoring",
       &flutter::StandardMethodCodec::GetInstance());
 
@@ -30,8 +35,9 @@ void MonitoringPlugin::RegisterWithRegistrar(
         plugin_pointer->HandleMethodCall(call, std::move(result));
       });
 
-  // Keep plugin alive - store in static variable
+  // Keep plugin and channel alive - store in static variables
   static std::unique_ptr<MonitoringPlugin> static_plugin = std::move(plugin);
+  static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> static_channel = std::move(channel);
 }
 
 MonitoringPlugin::MonitoringPlugin() {
