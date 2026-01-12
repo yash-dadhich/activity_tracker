@@ -8,7 +8,7 @@
 #include <string>
 #include <memory>
 
-class MonitoringPlugin : public flutter::Plugin {
+class MonitoringPlugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
 

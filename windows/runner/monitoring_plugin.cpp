@@ -29,7 +29,8 @@ void MonitoringPlugin::RegisterWithRegistrar(
         plugin_pointer->HandleMethodCall(call, std::move(result));
       });
 
-  registrar->AddPlugin(std::move(plugin));
+  // Keep plugin alive - store in static variable
+  static std::unique_ptr<MonitoringPlugin> static_plugin = std::move(plugin);
 }
 
 MonitoringPlugin::MonitoringPlugin() {

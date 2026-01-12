@@ -28,6 +28,9 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+  
+  // Plugin registrar for monitoring plugin
+  std::unique_ptr<flutter::PluginRegistrarWindows> monitoring_registrar_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

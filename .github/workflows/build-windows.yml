@@ -27,6 +27,12 @@ jobs:
     - name: Install dependencies
       run: flutter pub get
     
+    - name: Clean build cache
+      run: |
+        flutter clean
+        if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+        if (Test-Path "windows\flutter\ephemeral") { Remove-Item -Recurse -Force "windows\flutter\ephemeral" }
+    
     - name: Build Windows Release
       run: flutter build windows --release
     
