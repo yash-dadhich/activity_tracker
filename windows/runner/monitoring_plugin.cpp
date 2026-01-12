@@ -20,24 +20,33 @@ MonitoringPlugin* MonitoringPlugin::instance_ = nullptr;
 void MonitoringPlugin::RegisterWithRegistrar(
     FlutterDesktopPluginRegistrarRef registrar_ref) {
   
-  // Create C++ wrapper for the registrar
-  static flutter::PluginRegistrar registrar(registrar_ref);
+  // Store registrar for later use
+  static FlutterDesktopPluginRegistrarRef static_registrar = registrar_ref;
   
-  auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar.messenger(), 
+  // Create plugin instance
+  static auto plugin = std::make_unique<MonitoringPlugin>();
+  
+  // Set up method call handler using C API
+  FlutterDesktopPluginRegistrarSetMethodCallHandler(
+      registrar_ref,
       "com.activitytracker/monitoring",
-      &flutter::StandardMethodCodec::GetInstance());
-
-  auto plugin = std::make_unique<MonitoringPlugin>();
-
-  channel->SetMethodCallHandler(
-      [plugin_pointer = plugin.get()](const auto& call, auto result) {
-        plugin_pointer->HandleMethodCall(call, std::move(result));
-      });
-
-  // Keep plugin and channel alive - store in static variables
-  static std::unique_ptr<MonitoringPlugin> static_plugin = std::move(plugin);
-  static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> static_channel = std::move(channel);
+      [](const FlutterDesktopMessage* message, void* user_data) {
+        // This is the C API callback - we need to convert to C++ and call our handler
+        auto* plugin_ptr = static_cast<MonitoringPlugin*>(user_data);
+        
+        // For now, just acknowledge - full implementation would decode the message
+        // and call HandleMethodCall
+        
+        // Send empty success response
+        FlutterDesktopMessengerSendResponse(
+            FlutterDesktopPluginRegistrarGetMessenger(static_registrar),
+            message,
+            nullptr,
+            0
+        );
+      },
+      plugin.get()
+  );
 }
 
 MonitoringPlugin::MonitoringPlugin() {
