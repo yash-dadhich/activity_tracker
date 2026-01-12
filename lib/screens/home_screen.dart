@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/activity_provider.dart';
 import '../services/monitoring_service.dart';
 import '../services/permission_service.dart';
-import 'reports_screen.dart';
 import 'dart:io';
 
 class HomeScreen extends StatefulWidget {
@@ -42,16 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activity Tracker'),
+        title: const Text('Screenshot Tracker'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.bar_chart),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ReportsScreen()),
-            ),
-            tooltip: 'Reports',
-          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.pushNamed(context, '/settings'),
@@ -82,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'This application requires the following permissions to function:',
+              'This application requires the following permissions to capture screenshots:',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -136,8 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Column(
           children: [
             _buildStatusCard(provider),
-            _buildStatsCard(provider),
-            Expanded(child: _buildActivityList(provider)),
+            Expanded(child: _buildScreenshotGallery(provider)),
           ],
         );
       },
@@ -155,34 +145,31 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Monitoring Status',
+                  'Screenshot Capture',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Switch(
                   value: provider.isMonitoring,
                   onChanged: (value) async {
-                    print('🎛️ Monitoring toggle changed to: $value');
+                    print('🎛️ Screenshot capture toggle changed to: $value');
                     final monitoringService = context.read<MonitoringService>();
                     if (value) {
-                      print('▶️ Starting monitoring...');
+                      print('▶️ Starting screenshot capture...');
                       
                       // Set up callbacks
-                      monitoringService.onActivityTracked = (log) {
-                        print('📝 Activity tracked, adding to provider');
-                        provider.addActivityLog(log);
-                        provider.updateCurrentApplication(log.applicationName);
-                        provider.incrementKeystrokes(log.keystrokes);
-                        provider.incrementMouseClicks(log.mouseClicks);
+                      monitoringService.onScreenshotCaptured = (path) {
+                        print('📝 Screenshot captured, adding to provider: $path');
+                        provider.addScreenshot(path);
                       };
                       
                       await monitoringService.startMonitoring(provider.config);
                       provider.startMonitoring();
-                      print('✅ Monitoring started');
+                      print('✅ Screenshot capture started');
                     } else {
-                      print('⏸️ Stopping monitoring...');
+                      print('⏸️ Stopping screenshot capture...');
                       await monitoringService.stopMonitoring();
                       provider.stopMonitoring();
-                      print('✅ Monitoring stopped');
+                      print('✅ Screenshot capture stopped');
                     }
                   },
                 ),
@@ -205,11 +192,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            if (provider.isMonitoring) ...[
+            if (provider.isMonitoring && provider.config.screenshotEnabled) ...[
               const SizedBox(height: 12),
               Text(
-                'Current App: ${provider.currentApplication}',
-                style: const TextStyle(fontSize: 12),
+                'Screenshots saved to: Documents/screenshots/activity_tracker/',
+                style: const TextStyle(fontSize: 11, color: Colors.green),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Interval: ${provider.config.screenshotInterval}s | Total: ${provider.screenshotCount}',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
               ),
             ],
           ],
@@ -218,128 +211,108 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatsCard(ActivityProvider provider) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+  Widget _buildScreenshotGallery(ActivityProvider provider) {
+    if (provider.screenshotPaths.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildStatItem(
-              Icons.keyboard,
-              'Keystrokes',
-              provider.todayKeystrokes.toString(),
+            Icon(Icons.camera_alt, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No screenshots captured yet',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
-            _buildStatItem(
-              Icons.mouse,
-              'Clicks',
-              provider.todayMouseClicks.toString(),
-            ),
-            _buildStatItem(
-              Icons.camera_alt,
-              'Screenshots',
-              provider.screenshotCount.toString(),
-            ),
-            _buildStatItem(
-              Icons.list,
-              'Logs',
-              provider.activityLogs.length.toString(),
+            SizedBox(height: 8),
+            Text(
+              'Screenshots will appear here once capture starts',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, size: 32, color: Colors.blue),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActivityList(ActivityProvider provider) {
-    if (provider.activityLogs.isEmpty) {
-      return const Center(
-        child: Text('No activity logs yet'),
       );
     }
 
-    return ListView.builder(
+    return GridView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: provider.activityLogs.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 16 / 9,
+      ),
+      itemCount: provider.screenshotPaths.length,
       itemBuilder: (context, index) {
-        final log = provider.activityLogs[index];
+        final screenshotPath = provider.screenshotPaths[index];
+        final file = File(screenshotPath);
+        
         return Card(
-          child: ListTile(
-            leading: Icon(
-              log.screenshotPath != null 
-                  ? Icons.camera_alt 
-                  : (log.isIdle ? Icons.bedtime : Icons.computer),
-              color: log.screenshotPath != null 
-                  ? Colors.green 
-                  : (log.isIdle ? Colors.grey : Colors.blue),
-            ),
-            title: Text(log.applicationName),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _showScreenshot(context, screenshotPath),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  log.screenshotPath != null 
-                      ? '📸 Screenshot captured'
-                      : log.detailedSummary,
-                  style: const TextStyle(fontSize: 13),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                Expanded(
+                  child: Image.file(
+                    file,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(Icons.broken_image, color: Colors.grey),
+                      );
+                    },
+                  ),
                 ),
-                if (log.screenshotPath != null)
-                  Text(
-                    log.screenshotPath!,
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                if (log.detailedInfo != null && log.detailedInfo!.isNotEmpty && log.screenshotPath == null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Wrap(
-                      spacing: 4,
-                      children: log.detailedInfo!.entries.take(3).map((entry) {
-                        return Chip(
-                          label: Text(
-                            '${entry.key}: ${entry.value}',
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        );
-                      }).toList(),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    _getFileTimestamp(screenshotPath),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
+                ),
               ],
             ),
-            trailing: Text(
-              '${log.timestamp.hour}:${log.timestamp.minute.toString().padLeft(2, '0')}',
-              style: const TextStyle(fontSize: 12),
-            ),
-            onTap: log.screenshotPath != null 
-                ? () => _showScreenshot(context, log.screenshotPath!)
-                : null,
           ),
         );
       },
     );
+  }
+
+  String _getFileTimestamp(String filePath) {
+    try {
+      final fileName = filePath.split('/').last;
+      // Extract timestamp from filename like: screenshot_20241202_1430_25.png
+      final match = RegExp(r'screenshot_(\d{8})_(\d{4})_(\d{2})\.png').firstMatch(fileName);
+      if (match != null) {
+        final date = match.group(1)!;
+        final time = match.group(2)!;
+        final seconds = match.group(3)!;
+        
+        final year = date.substring(0, 4);
+        final month = date.substring(4, 6);
+        final day = date.substring(6, 8);
+        final hour = time.substring(0, 2);
+        final minute = time.substring(2, 4);
+        
+        return '$day/$month $hour:$minute:$seconds';
+      }
+    } catch (e) {
+      // Fallback to file modification time
+    }
+    
+    try {
+      final file = File(filePath);
+      final stat = file.statSync();
+      final modified = stat.modified;
+      return '${modified.day}/${modified.month} ${modified.hour}:${modified.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return 'Unknown';
+    }
   }
 
   void _showScreenshot(BuildContext context, String path) {

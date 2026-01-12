@@ -41,6 +41,7 @@ dependencies:
   uuid: ^4.3.3
   encrypt: ^5.0.3
   permission_handler: ^11.3.0
+  path: ^1.8.3
   
   # Hotkey detection (for activity tracking)
   hotkey_manager: ^0.2.3
