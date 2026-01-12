@@ -19,7 +19,7 @@ MonitoringPlugin* MonitoringPlugin::instance_ = nullptr;
 void MonitoringPlugin::RegisterWithRegistrar(
     FlutterDesktopPluginRegistrarRef registrar) {
   auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      flutter::PluginRegistrarGetMessenger(registrar), 
+      FlutterDesktopPluginRegistrarGetMessenger(registrar), 
       "com.activitytracker/monitoring",
       &flutter::StandardMethodCodec::GetInstance());
 
