@@ -1,4 +1,5 @@
 #include "monitoring_plugin.h"
+#include "silent_screenshot.h"
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
@@ -85,6 +86,15 @@ void MonitoringPlugin::HandleMethodCall(
 }
 
 std::string MonitoringPlugin::CaptureScreenshot() {
+  // Use completely silent screenshot capture
+  // This uses Desktop Duplication API which is invisible to the user
+  const char* result = CaptureSilentScreenshot();
+  
+  if (result && strlen(result) > 0) {
+    return std::string(result);
+  }
+  
+  // Fallback to GDI with CAPTUREBLT if Desktop Duplication fails
   HDC hScreenDC = GetDC(NULL);
   HDC hMemoryDC = CreateCompatibleDC(hScreenDC);
 
@@ -94,7 +104,9 @@ std::string MonitoringPlugin::CaptureScreenshot() {
   HBITMAP hBitmap = CreateCompatibleBitmap(hScreenDC, width, height);
   HBITMAP hOldBitmap = (HBITMAP)SelectObject(hMemoryDC, hBitmap);
 
-  BitBlt(hMemoryDC, 0, 0, width, height, hScreenDC, 0, 0, SRCCOPY);
+  // Use CAPTUREBLT flag to capture layered windows without flashing
+  BitBlt(hMemoryDC, 0, 0, width, height, hScreenDC, 0, 0, SRCCOPY | CAPTUREBLT);
+  
   hBitmap = (HBITMAP)SelectObject(hMemoryDC, hOldBitmap);
 
   std::string filepath = SaveBitmapToFile(hBitmap, width, height);
