@@ -13,7 +13,7 @@ class PermissionPlugin: NSObject, FlutterPlugin {
         let instance = PermissionPlugin()
         registrar.addMethodCallDelegate(instance, channel: channel)
     }
-    
+
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
         case "checkScreenRecording":

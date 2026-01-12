@@ -15,12 +15,10 @@ class ActivityProvider extends ChangeNotifier {
     _isMonitoring = true;
     notifyListeners();
   }
-
   void stopMonitoring() {
     _isMonitoring = false;
     notifyListeners();
   }
-
   void addScreenshot(String path) {
     _screenshotPaths.insert(0, path);
     // Keep only last 50 screenshots in memory
@@ -29,12 +27,10 @@ class ActivityProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
-
   void updateConfig(MonitoringConfig newConfig) {
     _config = newConfig;
     notifyListeners();
   }
-
   void clearScreenshots() {
     _screenshotPaths.clear();
     notifyListeners();
